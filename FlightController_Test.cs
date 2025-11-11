@@ -105,4 +105,37 @@ public class FlightController_Test
         Assert.Equal(500, objectResult.StatusCode);
         Assert.Equal("An internal error occurred", objectResult.Value);
     }
+
+    [Fact]
+    public async Task GetFligths_GenericException_Returns500()
+    {
+        _mockRepo.Setup(r => r.GetAllFlightsAsync()).ThrowsAsync(new Exception("Unexpected error fetching flights"));
+        var result = await _controller.GetFligths();
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+
+        Assert.Equal(500, objectResult.StatusCode);
+        Assert.Equal("An unexpected error occurred", objectResult.Value);
+    }
+
+    [Fact]
+    public async Task GetFlights_ReturnsFlights_WithAvailableSeatsOnly()
+    {
+        var flights = new List<Flight>
+        {
+            new Flight { FlightId = 1, NumOfSeats = 10, FlightDate = new DateTime(), FlightFrom = FlightDestination.BEOGRAD, FlightTo = FlightDestination.KRALJEVO, FlightStatus = "approved", NumOfLayovers = 0},
+            new Flight { FlightId = 2, NumOfSeats = 0, FlightDate = new DateTime(), FlightFrom = FlightDestination.BEOGRAD, FlightTo = FlightDestination.KRALJEVO, FlightStatus = "approved", NumOfLayovers = 0 },
+            new Flight { FlightId = 3, NumOfSeats = 5, FlightDate = new DateTime(), FlightFrom = FlightDestination.BEOGRAD, FlightTo = FlightDestination.KRALJEVO, FlightStatus = "approved", NumOfLayovers = 0 }
+        };
+
+        _mockRepo.Setup(r => r.GetAllFlightsAsync()).ReturnsAsync(flights);
+
+        var result = await _controller.GetFligths();
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(200, okResult.StatusCode);
+
+        var returnedFlights = Assert.IsAssignableFrom<IEnumerable<Flight>>(okResult.Value);
+        Assert.Equal(2, returnedFlights.Count());
+        Assert.All(returnedFlights, f => Assert.True(f.NumOfSeats > 0));
+    }
 }
